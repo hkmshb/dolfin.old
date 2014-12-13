@@ -1,1 +1,7 @@
-/dolfin.*
+*.py[co]
+dolfin.*
+!dolfin.py
+
+
+__pycache__/
+[._]ignore/
