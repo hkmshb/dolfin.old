@@ -105,3 +105,42 @@ class GitRevisionTest(RepositoryRevisionTest):
         _working_dir = os.path.join(self.working_dir, r'_ignore\git-repo2')
         version = get_localver(working_dir=_working_dir)
         self.assertEqual('0.1.0+7f9de9327817', version)
+
+
+class StorageTest(unittest.TestCase):
+
+    def test_storage_is_instance_of_dict(self):
+        s = dolfin.Storage()
+        self.assertIsInstance(s, dict)
+
+    def test_can_access_element_using_dot_notation(self):
+        foo = dolfin.Storage()
+        foo['bar'] = 'baz-qux-norf'
+        self.assertEqual('baz-qux-norf', foo.bar)
+
+    def test_can_set_element_using_dot_notation(self):
+        foo = dolfin.Storage()
+        foo.bar = 'baz-qux-norf'
+        self.assertEqual('baz-qux-norf', foo['bar'])
+
+    def test_access_using_unknown_member_returns_None(self):
+        foo = dolfin.Storage()
+        self.assertIsNone(foo.bar)
+
+    def test_access_using_missing_key_returns_None(self):
+        foo = dolfin.Storage()
+        self.assertIsNone(foo['bar'])
+
+    def test_can_be_pickled_and_unpickled(self):
+        import pickle
+
+        foo = dolfin.Storage(bar='baz')
+        out = pickle.dumps(foo)
+        self.assertIsNotNone(out)
+        
+        qux = pickle.loads(out)
+        self.assertEqual('baz', qux.bar)
+
+    def test_has_friendly_string_representation(self):
+        foo = dolfin.Storage(bar='baz')
+        self.assertTrue(repr(foo).startswith('<Storage'))

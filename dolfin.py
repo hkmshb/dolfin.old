@@ -97,3 +97,39 @@ def include_revision(func):
     f.__module__ = func.__module__
     f.__dict__.update(func.__dict__)    
     return f
+
+
+class Storage(dict):
+    """Represents a dictionary object whose elements can be accessed and set 
+    using the dot object notation. Thus in addition to `foo['bar']`, `foo.bar` 
+    can equally be used.
+    """
+    
+    def __init__(self, *args, **kwargs):
+        dict.__init__(self, *args, **kwargs)
+
+    def __getattr__(self, key):
+        return self[key] if key in self else None
+    
+    def __setattr__(self, key, value):
+        self[key] = value
+
+    def __getitem__(self, key):
+        return dict.get(self, key, None)
+    
+    def __getstate__(self):
+        return dict(self)
+
+    def __setstate__(self, value):
+        dict.__init__(self, value)
+
+    def __repr__(self):
+        return '<Storage %s>' % dict.__repr__(self)
+    
+
+
+    
+
+
+
+
