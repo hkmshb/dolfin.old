@@ -34,7 +34,7 @@ def include_revision(func):
     # defines command for extracting hash for different scc
     extractr_for = {
         '.hg': lambda: exec_command('hg.exe identify -i'),
-        '.git': lambda: exec_command('git.exe')
+        '.git': lambda: exec_command('git.exe rev-list HEAD -1')
     }
 
     def extract_revision(working_dir):
@@ -90,7 +90,7 @@ def include_revision(func):
         revision = extract_revision(working_dir)
         if not revision:
             return version
-        return '%s+%s' % (version, revision.decode())
+        return '%s+%s' % (version, revision[:12].decode())
 
     f.__doc__ = func.__doc__
     f.__name__ = func.__name__

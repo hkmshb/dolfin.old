@@ -45,6 +45,17 @@ class RepositoryRevisionTest(unittest.TestCase):
 
         os.chdir(cwd_cache)         # restore cwd
 
+    def test_non_repo_has_no_revision(self):
+        ""
+        _working_dir = os.environ.get('home', r'c:\\')
+        version = get_localver(working_dir=_working_dir)
+        self.assertEqual('0.1.0', version)
+        self.assertFalse(version.startswith('0.1.0+'))
+
+
+class HgRevisionTest(RepositoryRevisionTest):
+    ""
+
     @classmethod
     def setUpClass(cls):
         ""
@@ -55,25 +66,42 @@ class RepositoryRevisionTest(unittest.TestCase):
         ""
         cls.exec_script(r'.\\clean-hg-repos.ps1')
 
-    def test_non_repo_has_no_revision(self):
-        ""
-        _working_dir = os.environ.get('home', r'c:\\')
-        version = get_localver(working_dir=_working_dir)
-        self.assertEqual('0.1.0', version)
-        self.assertFalse(version.startswith('0.1.0+'))
-
-    def test_blank_repo_has_no_revision(self):
+    def test_blank_hg_repo_has_no_revision(self):
         ""
         _working_dir = os.path.join(self.working_dir, r'_ignore\\hg-repo1')
         version = get_localver(working_dir=_working_dir)
         self.assertEqual('0.1.0', version)
         self.assertFalse(version.startswith('0.1.0+'))
 
-    def test_repo_with_commit_has_revision(self):
+    def test_hg_repo_with_commit_has_revision(self):
         ""
         _working_dir = os.path.join(self.working_dir, r'_ignore\\hg-repo2')
         version = get_localver(working_dir=_working_dir)
         self.assertEqual('0.1.0+e7e5f581b991', version)
 
 
+class GitRevisionTest(RepositoryRevisionTest):
+    ""
 
+    @classmethod
+    def setUpClass(cls):
+        ""
+        cls.exec_script(r'.\\build-git-repos.ps1')
+
+    @classmethod
+    def tearDownClass(cls):
+        ""
+        cls.exec_script(r'.\\clean-git-repos.ps1')
+
+    def test_blank_git_repo_has_no_revision(self):
+        ""
+        _working_dir = os.path.join(self.working_dir, r'_ignore\git-repo1')
+        version = get_localver(working_dir=_working_dir)
+        self.assertEqual('0.1.0', version)
+        self.assertFalse(version.startswith('0.1.0+'))
+
+    def test_git_repo_with_commit_has_revision(self):
+        ""
+        _working_dir = os.path.join(self.working_dir, r'_ignore\git-repo2')
+        version = get_localver(working_dir=_working_dir)
+        self.assertEqual('0.1.0+7f9de9327817', version)
