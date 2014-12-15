@@ -144,3 +144,148 @@ class StorageTest(unittest.TestCase):
     def test_has_friendly_string_representation(self):
         foo = dolfin.Storage(bar='baz')
         self.assertTrue(repr(foo).startswith('<Storage'))
+    
+    def test_make_not_given_dict_or_sequence_throws(self):
+        self.assertRaises(ValueError, dolfin.Storage.make, 'foo')
+
+    def test_can_make_storage_from_dict(self):
+        obj = dolfin.Storage.make(dict(foo='bar'))
+        self.assertIsInstance(obj, dolfin.Storage)
+        self.assertEqual('bar', obj.foo)
+
+    def test_can_make_storage_from_nested_dicts(self):
+        obj = dolfin.Storage.make(dict(
+            baz = dict(
+                quux = 'norf',
+                meta = dict(
+                    name = 'simple.conf',
+                    path = r'c:\path\to\conf',
+                )
+            )
+        ))
+        self.assertIsInstance(obj, dolfin.Storage)
+        self.assertIsInstance(obj.baz, dolfin.Storage)
+        self.assertIsInstance(obj.baz.meta, dolfin.Storage)
+    
+
+class ConfigTest(unittest.TestCase):
+    ""
+    # base directory
+    base_dir = os.path.join(os.path.dirname(__file__), 'data')
+
+    def test_non_existing_file_causes_error(self):
+        conf_path = r'c:\path\to\non\existing\file.conf'
+        self.assertRaises(dolfin.ConfigNotFound, dolfin.Config, conf_path)
+
+    def test_config_is_storage_instance(self):
+        conf = dolfin.Config()
+        self.assertIsInstance(conf, dolfin.Storage)
+
+    def test_can_create_from_dict_instance(self):
+        conf = dolfin.Config(foo='bar')
+        self.assertIsNotNone(conf)
+        self.assertEqual('bar', conf.foo)
+
+    def test_can_create_from_file(self):
+        conf_path = os.path.join(self.base_dir, 'simple.conf')
+        conf = dolfin.Config(conf_path)
+        self.assertDictEqual(conf, dict(
+            foo = 'bar',
+            baz = dolfin.Storage(quux = 'norf'),
+            meta = dict(
+                name = 'simple.conf',
+                path = self.base_dir,
+            ),
+        ))
+
+    def test_direct_config_override_file_config(self):
+        conf_path = os.path.join(self.base_dir, 'simple.conf')
+        conf = dolfin.Config(conf_path, baz=dict(spam = 'egg'))
+        self.assertDictEqual(conf, dict(
+            foo = 'bar',
+            baz = dict(spam='egg'),
+            meta = dict(
+                name = 'simple.conf',
+                path = self.base_dir,
+            )
+        ))
+    
+    def test_has_empty_meta_if_create_from_empty_init(self):
+        conf = dolfin.Config()
+        self.assertDictEqual(conf, dict(
+            meta = dict(name=None, path=None)
+        ))
+
+    def test_has_empty_meta_if_not_create_from_file(self):
+        conf = dolfin.Config(foo='bar')
+        self.assertDictEqual(conf, dict(
+            foo = 'bar',
+            meta = dict(name=None, path=None),
+        ))
+
+    def test_has_meta_if_create_from_file(self):
+        conf_path = os.path.join(self.base_dir, 'simple.conf')
+        conf = dolfin.Config(conf_path)
+        self.assertDictEqual(conf.meta, dict(
+            name = 'simple.conf',
+            path = self.base_dir,
+        ))
+    
+    def test_all_dictlike_elements_are_storage(self):
+        conf = dolfin.Config(foo='bar', baz=dict(spam='egg'))
+        self.assertEqual('bar', conf.foo)
+        self.assertEqual('egg', conf.baz.spam)
+        self.assertIsNone(conf.meta.name)
+        self.assertIsNone(conf.meta.path)
+
+    def test_all_dictlike_elements_are_storage2(self):
+        conf_path = os.path.join(self.base_dir, 'simple.conf')
+        conf = dolfin.Config(conf_path)
+        self.assertEqual('bar', conf.foo)
+        self.assertEqual('norf', conf.baz.quux)
+        self.assertEqual('simple.conf', conf.meta.name)
+        self.assertEqual(self.base_dir, conf.meta.path)
+
+    def test_can_create_from_complex_file_content(self):
+        conf_path = os.path.join(self.base_dir, 'complex.conf')
+        conf = dolfin.Config(conf_path)
+        self.assertDictEqual(conf, dict(
+            foo = 'bar',
+            baz = ['quux', 'norf'],
+            fix = dict(
+                bug = [1, 'details go here'],
+                inf = [2, 'details go here'],
+                mix = [3, {
+                    'bug': 'needs fixing...',
+                    'inf': [1,2,3,4,5],
+                    'all': dolfin.Storage(name=11),
+                }]
+            ),
+            meta = dict(
+                name = 'complex.conf',
+                path = self.base_dir,
+            )
+        ))
+    
+    def test_can_register_default_config_values(self):
+        conf = dolfin.Config()
+        self.assertIsNone(conf.factory)
+
+        dolfin.Config.register_defaults(
+            factory = {
+                'name': 'X-Factory',
+                'location': 'X-Location',
+            }
+        )
+        self.assertEqual('X-Factory', conf.factory.name)
+    
+    def test_can_register_default_config_functions(self):
+        conf = dolfin.Config()
+        self.assertIsNone(conf.factory)
+
+        dolfin.Config.register_func_default(
+            key='factory',
+            function=lambda s,k: k + '-location'
+        );
+        self.assertEqual('factory-location', conf.factory)
+

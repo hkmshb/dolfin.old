@@ -11,7 +11,18 @@ __version__ = '0.1'
 
 
 import os, sys
+import json
 
+
+
+class DolfinError(Exception):
+    """Represents the base exception class for the library."""
+    pass
+
+
+class ConfigNotFound(DolfinError):
+    """The exception thrown when the configuration file is not found."""
+    pass
 
 
 def include_revision(func):
@@ -109,7 +120,7 @@ class Storage(dict):
         dict.__init__(self, *args, **kwargs)
 
     def __getattr__(self, key):
-        return self[key] if key in self else None
+        return self.__getitem__(key)
     
     def __setattr__(self, key, value):
         self[key] = value
@@ -126,10 +137,80 @@ class Storage(dict):
     def __repr__(self):
         return '<Storage %s>' % dict.__repr__(self)
     
+    @staticmethod
+    def make(obj):
+        """Converts all dict-like elements of a dict or storage object into
+        storage objects.
+        """
+        if not isinstance(obj, (dict,)):
+            raise ValueError('obj must be a dict or dict-like object')
+        
+        _make = lambda d: Storage({ k: d[k] 
+            if not isinstance(d[k], (dict, Storage))
+            else _make(d[k])
+                for k in d.keys()
+        })
+        return _make(obj)
 
 
+class Config(Storage):
+    """A dictionary which contains configuration settings."""
+
+    class Meta(type):
+        """Meta class for creating Config object types."""
+
+        def __new__(cls, name, bases, attrs):
+            _cls = type.__new__(cls, name, bases, attrs)
+            _cls._func_defaults = Storage()
+            _cls._defaults = Storage()
+            return _cls
+        
+        def register_defaults(cls, **defaults):
+            """Registers default configurations."""
+            cls._defaults.update(Storage.make(defaults))
+
+        def register_func_default(cls, key, function):
+            """Registers a default function for a given key."""
+            cls._func_defaults[key] = function
     
 
+    __metaclass__ = Meta
+    
+    def __init__(self, filepath=None, **config):
+        p = os.path
+        config.update(meta=Storage(name=None, path=None))
+        if filepath:            
+            if not p.exists(filepath):
+                relpath = p.relpath(p.dirname(filepath), os.getcwd())
+                basename = p.basename(filepath)
+                msg = '%s was not found in %s'                
+                
+                if relpath == '.':
+                    raise ConfigNotFound(msg % (basename, 'current directory'))
+                raise ConfigNotFound(msg % (basename, relpath))
 
+            with open(filepath) as f:
+                _config = Storage(json.load(f)) or Storage()
 
+            _config.update(config)
+            _config.meta = Storage(
+                name = p.basename(filepath),
+                path = p.dirname(filepath),
+            )
+            config = _config
+
+        Storage.__init__(self, Storage.make(config))
+
+    def __getitem__(self, key):
+        if key not in self:
+            if key in self._defaults:
+                self[key] = self._defaults[key]
+            elif key in self._func_defaults:
+                self[key] = self._func_defaults[key](self, key)
+        return dict.get(self, key, None)
+    
+    def __delitem__(self, key):
+        if key not in self:
+            return # fail silently
+        return dict.__delitem__(self, key)
 
