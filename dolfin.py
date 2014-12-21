@@ -4,6 +4,7 @@ A collection of general purpose utility functions and classes that can be used
 within scripts and web applications.
 
 Copyright (c) 2014, Hazeltek Solutions.
+License: MIT (see LICENSE for details)
 """
 
 __author__  = 'Hazeltek Solutions'

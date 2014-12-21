@@ -3,5 +3,8 @@ dolfin.*
 !dolfin.py
 
 
+[Tt]est[Rr]esult/
 __pycache__/
 [._]ignore/
+build/
+dist/
